@@ -1,0 +1,501 @@
+import { useState, useEffect } from 'react';
+import Input from '@src/components/form/input/InputField';
+import Radio from '@src/components/form/input/Radio';
+import Select from '@src/components/form/Select';
+import Switch from '@src/components/form/switch/Switch';
+
+export default function PolyhouseForm({
+  polyhouse,
+  onChange,
+  onTypeChange,
+  polyhouseTypes,
+  errors,
+  allErrors,
+  unitId,
+  polyhouseIndex,
+  submitAttempted,
+}) {
+  // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
+  const [blurredFields, setBlurredFields] = useState({});
+
+  console.log(polyhouseTypes);  
+  // console.log(polyhouse?.polyhouseTypeId);
+    
+
+  // Reset blurred fields when polyhouse changes
+  useEffect(() => {
+    setBlurredFields({});
+  }, [polyhouseIndex, unitId]);
+
+  // Early return AFTER all hooks
+  if (!polyhouse) return null;
+
+  const handleChange = (field, value) => {
+    let val = value;
+    const numericFields = [
+      'polyhouseArea',
+      'structureLife',
+      'plasticLife',
+      'gutterHeight',
+      'topHeight',
+      'acfCount',
+      'exhaustFanCount',
+      'foggersCount',
+      'coolingPadCount',
+      'polyhouseTypeId',
+    ];
+
+    if (numericFields.includes(field)) {
+      val = value === '' ? '' : Number(value);
+    }
+
+    let updatedPolyhouse = { ...polyhouse, [field]: val };
+
+    if (field === 'polyhouseTypeId') {
+      const selectedType = polyhouseTypes?.find(
+        (t) => String(t.value) === String(val)
+      );
+
+      if (selectedType?.label === 'NVPH') {
+        updatedPolyhouse = {
+          ...updatedPolyhouse,
+          coolingPadCount: 0,
+          exhaustFanCount: 0,
+        };
+      }
+    }
+    onChange(updatedPolyhouse);
+
+    if (field === 'polyhouseTypeId' && onTypeChange) {
+      onTypeChange(updatedPolyhouse);
+      // Clear blurred state for conditional fields when type changes
+      // setBlurredFields((prev) => {
+      //   const newBlurred = { ...prev };
+      //   delete newBlurred.exhaustFanCount;
+      //   delete newBlurred.coolingPadCount;
+      //   return newBlurred;
+      // });
+    }
+
+    // When a switch is enabled, immediately trigger validation for the dependent radio group.
+    if (field === 'sideCurtains' && val === true) {
+      handleBlur('sideCurtainType');
+    }
+
+    if (field === 'sideNet' && val === true) {
+      handleBlur('sideNetType');
+    }
+  };
+
+  const selectedType = polyhouseTypes?.find(
+    (type) => String(type.value) === String(polyhouse.polyhouseTypeId)
+  );
+
+  const handleBlur = (fieldName) => {
+    setBlurredFields((prev) => ({ ...prev, [fieldName]: true }));
+  };
+
+  // Helper function to get error for a specific field
+  const getError = (fieldName) => {
+    if (!allErrors) return null;
+
+    return (
+      (blurredFields[fieldName] || submitAttempted) &&
+      errors(allErrors, unitId, polyhouseIndex, fieldName)
+    );
+  };
+  console.log(polyhouse?.polyhouseTypeId);
+
+  return (
+    <div className=" flex-1 bg-card-background  bg-gray-100  rounded-r-2xl  ">
+      {/* Form Body */}
+      <div className="p-4 h-72  flex flex-col gap-5 overflow-y-auto">
+        <div className=" grid grid-cols-2 gap-5">
+          {/* Polyhouse Name */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-gray-700 font-outfit">
+              Polyhouse name *
+            </label>
+            <Input
+              type="text"
+              placeholder="Enter Name"
+              value={polyhouse.polyhouseName ?? ''}
+              onChange={(e) => handleChange('polyhouseName', e.target.value)}
+              onBlur={() => handleBlur('polyhouseName')}
+              className={`w-full bg-white ${
+                getError('polyhouseName') ? 'border-red-500' : ''
+              }`}
+            />
+            {getError('polyhouseName') && (
+              <span className="text-xs text-red-500">
+                {getError('polyhouseName')}
+              </span>
+            )}
+          </div>
+
+          {/* Polyhouse Area */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-gray-700 font-outfit">
+              Polyhouse area (sq.m)
+            </label>
+            <Input
+              type="number"
+              placeholder="Enter Area"
+              step="0.1"
+              min={0.0}
+              value={polyhouse.polyhouseArea ?? ''}
+              onKeyDown={(e) => {
+                if (['E', '+', '-', 'e'].includes(e.key)) {
+                  e.preventDefault();
+                }
+              }}
+              onScroll={(e) => e.target.blur()}
+              onWheel={(e) => e.target.blur()}
+              onChange={(e) => handleChange('polyhouseArea', e.target.value)}
+              onBlur={() => handleBlur('polyhouseArea')}
+              className={`w-full bg-white ${
+                getError('polyhouseArea') ? 'border-red-500' : ''
+              }`}
+            />
+
+            {getError('polyhouseArea') && (
+              <span className="text-xs text-red-500">
+                {getError('polyhouseArea')}
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className=" grid grid-cols-2 gap-5">
+          {/* Polyhouse Type */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-gray-700 font-outfit">
+              Polyhouse type *
+            </label>
+            <Select
+              options={polyhouseTypes}
+              value={polyhouse.polyhouseTypeId ?? ''}
+              onChange={(value) => handleChange('polyhouseTypeId', value)}
+              onBlur={() => handleBlur('polyhouseTypeId')}
+              className={`bg-white ${
+                getError('polyhouseTypeId') ? 'border-red-500' : ''
+              }`}
+            />
+            {getError('polyhouseTypeId') && (
+              <span className="text-xs text-red-500">
+                {getError('polyhouseTypeId')}
+              </span>
+            )}
+          </div>
+
+          {/* Polyhouse Status */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-gray-700 font-outfit">
+              Polyhouse status
+            </label>
+            <Select
+              options={[
+                { value: 'Under Construction', label: 'Under Construction' },
+                { value: 'Completed', label: 'Completed' },
+              ]}
+              value={polyhouse.status ?? ''}
+              onChange={(value) => handleChange('status', value)}
+              onBlur={() => handleBlur('status')}
+              className={`bg-white ${
+                getError('status') ? 'border-red-500' : ''
+              }`}
+            />
+            {getError('status') && (
+              <span className="text-xs text-red-500">{getError('status')}</span>
+            )}
+          </div>
+        </div>
+
+        <hr className="w-full border-t border-1 border-[#18181B/6] my-2.5" />
+
+        <div className=" grid grid-cols-4 gap-4 ">
+          {[
+            { label: 'Gutter Height (m)', key: 'gutterHeight' },
+            { label: 'Top Height (m)', key: 'topHeight' },
+            { label: 'Plastic Life', key: 'plasticLife' },
+            { label: 'Structure Life', key: 'structureLife' },
+          ].map(({ label, key }) => (
+            <div className="flex flex-col gap-1.5" key={key}>
+              <label className="text-sm font-medium text-gray-700 font-outfit">
+                {label}
+              </label>
+              <Input
+                key={key}
+                label={label}
+                min={0}
+                type="number"
+                onKeyDown={(e) => {
+                  if (['E', '+', '-', 'e'].includes(e.key)) {
+                    e.preventDefault();
+                  }
+                }}
+                onScroll={(e) => e.target.blur()}
+                onWheel={(e) => e.target.blur()}
+                placeholder={0}
+                value={polyhouse[key] ?? ''}
+                onChange={(e) => handleChange(key, e.target.value)}
+                onBlur={() => handleBlur(key)}
+                className={`bg-white ${getError(key) ? 'border-red-500' : ''}`}
+              />
+              {getError(key) && (
+                <span className="text-xs text-red-500">{getError(key)}</span>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <hr className="w-full border-t border-1 border-[#18181B/6] my-2.5" />
+
+        <div className=" grid grid-cols-1 gap-4 ">
+          {/* Retractable roof */}
+          <div className="flex  gap-1.5 justify-between">
+            <label className="text-sm font-medium text-gray-700 font-outfit">
+              Retractable roof
+            </label>
+
+            <div className="flex gap-2">
+              <Switch
+                checked={polyhouse.retractableRoof === true}
+                onChange={(checked) =>
+                  handleChange('retractableRoof', checked ? true : false)
+                }
+                onBlur={() => {
+                  handleBlur('retractableRoof');
+                }}
+              />
+              <span>{polyhouse.retractableRoof === true ? 'Yes' : 'No'}</span>
+            </div>
+          </div>
+
+          {/* Side curtains */}
+          <div className="flex flex-col gap-5">
+            <div className="flex justify-between">
+              <label className="text-sm font-medium text-gray-700 font-outfit">
+                Side curtains
+              </label>
+
+              <div className="flex gap-2">
+                <Switch
+                  checked={polyhouse.sideCurtains === true}
+                  onChange={(checked) =>
+                    handleChange('sideCurtains', checked ? true : false)
+                  }
+                />
+                <span>{polyhouse.sideCurtains === true ? 'Yes' : 'No'}</span>
+              </div>
+            </div>
+            {polyhouse.sideCurtains === true && (
+              <div
+                onBlur={() => handleBlur('sideCurtainType')}
+                className="flex flex-col"
+              >
+                <div className="p-3 flex justify-start items-start gap-6 rounded-lg bg-gray-50 shadow-[0px_1px_3px_0px_rgba(16,24,40,0.10)] ">
+                  {['Auto', 'Manual'].map((type) => (
+                    <Radio
+                      key={type}
+                      id={`curtain-${type}`}
+                      name="sideCurtainType"
+                      value={type}
+                      checked={polyhouse.sideCurtainType === type}
+                      label={type}
+                      onChange={() => handleChange('sideCurtainType', type)}
+                    />
+                  ))}
+                </div>
+                {getError('sideCurtainType') && (
+                  <span className="text-xs text-red-500 mt-1 block">
+                    {getError('sideCurtainType')}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Slide net  */}
+          <div className="flex  flex-col gap-5">
+            <div className="flex  gap-1.5 justify-between">
+              <label className="text-sm font-medium text-gray-700 font-outfit">
+                Side net
+              </label>
+
+              <div className="flex gap-2">
+                <Switch
+                  checked={polyhouse.sideNet === true}
+                  onChange={(checked) =>
+                    handleChange('sideNet', checked ? true : false)
+                  }
+                />
+                <span>{polyhouse.sideNet === true ? 'Yes' : 'No'}</span>
+              </div>
+            </div>
+
+            {polyhouse.sideNet === true && (
+              <div
+                onBlur={() => handleBlur('sideNetType')}
+                className="flex flex-col"
+              >
+                <div className="p-3 flex justify-start items-start gap-6 rounded-lg bg-gray-50  shadow-[0px_1px_3px_0px_rgba(16,24,40,0.10)] ">
+                  {['Auto', 'Manual'].map((type) => (
+                    <Radio
+                      key={type}
+                      id={`side-${type}`}
+                      name="sideNetType"
+                      value={type}
+                      checked={polyhouse.sideNetType === type}
+                      label={type}
+                      onChange={() => {
+                        handleChange('sideNetType', type);
+                      }}
+                    />
+                  ))}
+                </div>
+                {getError('sideNetType') && (
+                  <span className="text-xs text-red-500 mt-1 block">
+                    {getError('sideNetType')}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <hr className="w-full border-t border-1 border-[#18181B/6] my-2.5" />
+
+        <div className=" grid grid-cols-4 gap-3.5 ">
+          {/* Number of cooling pad */}
+          {selectedType?.label !== 'NVPH' && (
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-gray-700 font-outfit">
+                Cooling pad
+              </label>
+              <Input
+                type="number"
+                min={0}
+                placeholder="Enter Qty"
+                onKeyDown={(e) => {
+                  if (['E', '+', '-', 'e'].includes(e.key)) {
+                    e.preventDefault();
+                  }
+                }}
+                onScroll={(e) => e.target.blur()}
+                onWheel={(e) => e.target.blur()}
+                value={polyhouse.coolingPadCount ?? ''}
+                onChange={(e) =>
+                  handleChange('coolingPadCount', e.target.value)
+                }
+                onBlur={() => handleBlur('coolingPadCount')}
+                className={`w-full bg-white ${
+                  getError('coolingPadCount') ? 'border-red-500' : ''
+                }`}
+              />
+              {getError('coolingPadCount') && (
+                <span className="text-xs text-red-500">
+                  {getError('coolingPadCount')}
+                </span>
+              )}
+            </div>
+          )}
+
+          {/*  No of exhaust fans */}
+          {selectedType?.label !== 'NVPH' && (
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-gray-700 font-outfit">
+                Exhaust fans
+              </label>
+              <Input
+                type="number"
+                min={0}
+                placeholder="Enter Qty"
+                onKeyDown={(e) => {
+                  if (['E', '+', '-', 'e'].includes(e.key)) {
+                    e.preventDefault();
+                  }
+                }}
+                onScroll={(e) => e.target.blur()}
+                onWheel={(e) => e.target.blur()}
+                value={polyhouse.exhaustFanCount ?? ''}
+                onChange={(e) =>
+                  handleChange('exhaustFanCount', e.target.value)
+                }
+                onBlur={() => handleBlur('exhaustFanCount')}
+                className={`w-full bg-white ${
+                  getError('exhaustFanCount') ? 'border-red-500' : ''
+                }`}
+              />
+              {getError('exhaustFanCount') && (
+                <span className="text-xs text-red-500">
+                  {getError('exhaustFanCount')}
+                </span>
+              )}
+            </div>
+          )}
+
+          {/*  No of foggers */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-gray-700 font-outfit">
+              Foggers
+            </label>
+            <Input
+              type="number"
+              min={0}
+              placeholder="Enter Qty"
+              onKeyDown={(e) => {
+                if (['E', '+', '-', 'e'].includes(e.key)) {
+                  e.preventDefault();
+                }
+              }}
+              onScroll={(e) => e.target.blur()}
+              onWheel={(e) => e.target.blur()}
+              value={polyhouse.foggersCount ?? ''}
+              onChange={(e) => handleChange('foggersCount', e.target.value)}
+              onBlur={() => handleBlur('foggersCount')}
+              className={`w-full bg-white ${
+                getError('foggersCount') ? 'border-red-500' : ''
+              }`}
+            />
+            {getError('foggersCount') && (
+              <span className="text-xs text-red-500">
+                {getError('foggersCount')}
+              </span>
+            )}
+          </div>
+
+          {/* No of ACF */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-gray-700 font-outfit">
+              ACF
+            </label>
+            <Input
+              type="number"
+              min={0}
+              placeholder="Enter Qty"
+              onKeyDown={(e) => {
+                if (['E', '+', '-', 'e'].includes(e.key)) {
+                  e.preventDefault();
+                }
+              }}
+              onScroll={(e) => e.target.blur()}
+              onWheel={(e) => e.target.blur()}
+              value={polyhouse.acfCount ?? ''}
+              onChange={(e) => handleChange('acfCount', e.target.value)}
+              onBlur={() => handleBlur('acfCount')}
+              className={`w-full bg-white ${
+                getError('acfCount') ? 'border-red-500' : ''
+              }`}
+            />
+            {getError('acfCount') && (
+              <span className="text-xs text-red-500">
+                {getError('acfCount')}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
